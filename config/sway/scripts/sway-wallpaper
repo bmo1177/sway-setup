@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # sway-wallpaper — wallpaper picker + dynamic theming.
-# Port of binnewbs' wppicker.sh (rofi + swww + matugen) for sway + fuzzel.
-# Bound to $mod+w in ~/.config/sway/config. `--apply` skips the picker and
-# applies ~/.config/sway/current_wallpaper (used at sway startup).
+# Bound to $mod+w in ~/.config/sway/config: $mod+w runs --picker (floating
+# yazi browser with image previews), $mod+Shift+W keeps the old fuzzel
+# fuzzy list. `--apply` skips the picker and applies
+# ~/.config/sway/current_wallpaper (used at sway startup).
 #
 # Behaviour:
-#   1. Pick a wallpaper from ~/Pictures/wallpapers via fuzzel (newest first).
+#   1. Pick a wallpaper from ~/Pictures/wallpapers (yazi or fuzzel).
 #   2. Update ~/.config/sway/current_wallpaper symlink (lock screen, etc.).
 #   3. Recolour via matugen, then set the wallpaper live (awww, else swaymsg).
 #
-# NOTE: `matugen image` is broken in matugen 4.0.0 on nixpkgs (fails with
-# "IO error: not a terminal" on every image, exit 1) — so instead: ffmpeg
-# shrinks the image to 1px for the average color, and `matugen color hex`
-# (which works) regenerates waybar/foot/fuzzel/sway/gtk templates.
+# NOTE: `matugen image` is broken in matugen 4.0.0 on nixpkgs ("IO error:
+# not a terminal" on every image, exit 1) — so instead: (1) try `matugen
+# image` with stdin from /dev/null; (2) fall back to `matugen color hex` on
+# the wallpaper's average color, nudged toward a more vivid tone (the 1×1
+# average of a busy wallpaper is often a muddy gray).
 set -euo pipefail
 
 WALLPAPER_DIR="$HOME/Pictures/wallpapers"
@@ -34,6 +36,44 @@ avg_hex() {
         | od -A n -t u1 | awk '{printf "%02x%02x%02x", $1, $2, $3}'
 }
 
+# vibrant_hex — nudge an average hex toward a brighter, more vivid tone
+# (raise each channel toward the brightest one). Portable awk, no strtonum.
+vibrant_hex() {
+    local hex="${1:-}"
+    awk -v hex="$hex" '
+        function h(c) { return index("0123456789abcdef", tolower(c)) - 1 }
+        BEGIN {
+            if (length(hex) == 6) {
+                r = h(substr(hex,1,1))*16 + h(substr(hex,2,1))
+                g = h(substr(hex,3,1))*16 + h(substr(hex,4,1))
+                b = h(substr(hex,5,1))*16 + h(substr(hex,6,1))
+                mx = (r > g && r > b) ? r : (g > b ? g : b)
+                for (i = 0; i < 3; i++) {
+                    c = i == 0 ? r : (i == 1 ? g : b)
+                    c += (mx - c) * 0.55
+                    if (c < 0) c = 0
+                    if (c > 255) c = 255
+                    printf "%02x", int(c)
+                }
+            } else {
+                printf "%s", hex
+            }
+        }
+    ' 2>/dev/null || printf '%s' "$hex"
+}
+
+theme_color() {
+    local img="$1" hex
+    # 1) Material You via matugen (matugen 4.0.0 quirk: stdin from /dev/null).
+    if command -v matugen >/dev/null 2>&1 \
+       && matugen image "$img" < /dev/null >/dev/null 2>&1; then
+        return 0   # themes written directly by matugen; nothing more to do
+    fi
+    # 2) Vibrant average fallback.
+    hex="$(vibrant_hex "$(avg_hex "$img")")"
+    printf '%s' "$hex"
+}
+
 set_live() {
     if pgrep -f '[a]www-daemon( |$)' >/dev/null 2>&1 && command -v awww >/dev/null 2>&1; then
         awww img "$1" --transition-type any --transition-fps 60
@@ -47,7 +87,7 @@ apply_wallpaper() {
     mkdir -p "$(dirname "$SYMLINK_PATH")"
     ln -sfn "$selected" "$SYMLINK_PATH"
     ensure_daemon
-    hex="$(avg_hex "$selected")"
+    hex="$(theme_color "$selected")"
     if [ -n "${hex:-}" ] && command -v matugen >/dev/null 2>&1; then
         if ! matugen color hex "$hex" >/dev/null 2>&1; then
             notify-send 'Theme update failed' "matugen color $hex failed; wallpaper still applied"
@@ -56,6 +96,18 @@ apply_wallpaper() {
     set_live "$selected"
     notify-send 'Wallpaper updated' "$(basename "$selected")${hex:+ · theme #$hex}"
 }
+
+# --picker: floating yazi browser with image previews (Super+W).
+if [ "${1:-}" = "--picker" ]; then
+    PICKER_FILE="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/sway-wallpaper-picker-XXXXXX")"
+    trap 'rm -f "$PICKER_FILE"' EXIT
+    foot -a yazi-picker yazi --chooser-file="$PICKER_FILE" "$WALLPAPER_DIR" >/dev/null 2>&1 || true
+    if [ -s "$PICKER_FILE" ]; then
+        SELECTED_PATH="$(cat "$PICKER_FILE")"
+        [ -f "$SELECTED_PATH" ] && apply_wallpaper "$SELECTED_PATH"
+    fi
+    exit 0
+fi
 
 if [ "${1:-}" = "--apply" ]; then
     [ -e "$SYMLINK_PATH" ] || exit 0

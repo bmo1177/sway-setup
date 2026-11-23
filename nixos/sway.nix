@@ -28,6 +28,16 @@
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   };
 
+  # Keystroke overlay (Super+I). The sway config execs plain `wshowkeys`;
+  # swayr/wshowkeys/sov also ship via programs.sway.extraPackages below.
+  programs.wshowkeys.enable = true;
+
+  # wshowkeys reads /dev/input via libinput — membership in the input group
+  # lets it work even when the setuid wrapper isn't in sway's exec PATH.
+  users.users.devlab = {
+    extraGroups = [ "input" ];
+  };
+
   programs.sway = {
     enable = true;
     # The rice uses SwayFX-only directives (blur, shadows, corner_radius,
@@ -74,6 +84,10 @@
       gammastep
       # --- system trays / bluetooth ---
       blueman
+      # --- window switching / overlays (Super+Tab, Super+I, workspace map) ---
+      swayr
+      wshowkeys
+      sov
       # --- terminal tools ---
       yazi
       # --- auth agent (sway config resolves it without a /nix/store hash) ---

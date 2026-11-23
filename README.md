@@ -69,6 +69,7 @@ config/        # dotfiles, mirrored 1:1 to ~/.config/ (sway, waybar, foot,
                # Switch with Super+Ctrl+B (style) / Super+Alt+B (layout).
 nixos/         # sway.nix — full importable module;
                # sway-binnewbs-snippet.nix — minimal paste-in fragment
+flake.nix      # Flakes entry point: nixosModules.default + small devShell
 ```
 
 Wallpapers live in `~/Pictures/wallpapers/` (50 and counting, not vendored here).
@@ -89,6 +90,11 @@ Wallpapers live in `~/Pictures/wallpapers/` (50 and counting, not vendored here)
    ```bash
    ./install.sh
    ```
+   Flakes users instead: add
+   `inputs.sway_setup = { url = "github:bmo1177/sway_setup"; };`
+   to your inputs and `imports = [ inputs.sway_setup.nixosModules.default ];`
+   in `/etc/nixos/configuration.nix` (then step 1 is done declaratively;
+   `swayr`, `wshowkeys`, `sov` ship in the module via `extraPackages`).
 3. Log out → pick **Sway** at the login screen → log back in.
 4. Flatpaks: `flatpak remote-add --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo`,
    then install the `.flatpak` bundles from each app's GitHub releases.
@@ -123,7 +129,7 @@ workspace you are on, so links stay put.
 | Super+Q, Super+F, Super+Shift+F | Close / fullscreen / focus mode (fullscreen + hide bar) |
 | Super+1..0, Super+F11/F12 | Workspaces 1–12 (Shift moves windows) |
 | Alt+Tab, Super+Tab | Window / workspace switcher |
-| Super+W | Wallpaper picker + auto-theme |
+| Super+W | Wallpaper picker (floating yazi) + auto-theme |
 | Super+Shift+E / Super+L | Power menu / lock |
 | Super+Shift+X | Screen off/on toggle |
 | Super+I | Keystroke overlay (recordings) |
@@ -132,6 +138,9 @@ workspace you are on, so links stay put.
 | Print / Super+Print / Super+Shift+S | Screenshots (region/file/annotate) |
 | Ctrl+Print | Region screenshot to clipboard |
 | Super+Shift+R | Region screen recording (toggle to stop, `~/Videos/screencasts/`) |
+| Super+Shift+N | Region recording with mic (`~/Videos/screencasts/`) |
+| Super+Shift+G | Instant animated GIF of the region (`~/Pictures/Screenshots/`) |
+| Super+Shift+W | Wallpaper picker (fuzzel fast list) |
 | Super+Ctrl+C | Color picker (copies hex) |
 | Super+Ctrl+V | Clipboard history |
 

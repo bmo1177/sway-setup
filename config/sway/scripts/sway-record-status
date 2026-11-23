@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# sway-record-status — Waybar JSON for the custom/recording module.
+# Reads the PID file written by sway-record; the module polls every 2s and
+# refreshes instantly on signal 8, so no external watcher is needed.
+set -u
+PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.pid"
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    printf '{"text": " REC", "class": "recording", "tooltip": "Recording — click to stop"}\n'
+else
+    printf '{"text": "", "class": "idle", "tooltip": "Not recording"}\n'
+fi

@@ -4,7 +4,7 @@
 # Selection lines MUST end with ({id}) — swayr parses the id back from them.
 
 [menu]
-executable = '/run/current-system/sw/bin/fuzzel'
+executable = 'fuzzel'
 args = [
     '--dmenu',
     '--prompt=Window: ',

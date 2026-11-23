@@ -40,6 +40,12 @@ input type:touchpad {
     tap_button_map lrm
 }
 
+# --- 3-finger touchpad gestures (Sway 1.8+ native bindgesture) ---
+bindgesture swipe:3:right workspace prev
+bindgesture swipe:3:left workspace next
+bindgesture swipe:3:up fullscreen toggle
+bindgesture swipe:3:down exec $term -a float-term
+
 # --- GNOME-style click-to-focus (sway defaults to focus-follows-mouse) ---
 focus_follows_mouse no
 focus_wrapping yes
@@ -56,11 +62,12 @@ bindsym $mod+Shift+Return exec $term -a float-term
 for_window [app_id="float-term"] floating enable, resize set 800 550, move position center
 bindsym $mod+d exec $menu
 # macOS-style switching: Alt+Tab = window picker, Super+Tab = workspace/window picker.
-# Absolute paths: sway's exec PATH doesn't include ~/.nix-profile/bin.
+# swayr, swayrd, wshowkeys, sov ship via programs.sway.extraPackages in
+# nixos/sway.nix, so plain names resolve in sway's exec context.
 # The `pgrep || start` guard heals a dead swayrd (socket file lingers with
 # nobody listening, which otherwise fails with "Connection refused").
-bindsym Mod1+Tab exec sh -c 'pgrep -x swayrd >/dev/null || { $HOME/.nix-profile/bin/swayrd & sleep 1; }; exec $HOME/.nix-profile/bin/swayr switch-window'
-bindsym $mod+Tab exec sh -c 'pgrep -x swayrd >/dev/null || { $HOME/.nix-profile/bin/swayrd & sleep 1; }; exec $HOME/.nix-profile/bin/swayr switch-workspace-or-window'
+bindsym Mod1+Tab exec sh -c 'pgrep -x swayrd >/dev/null || { swayrd & sleep 1; }; exec swayr switch-window'
+bindsym $mod+Tab exec sh -c 'pgrep -x swayrd >/dev/null || { swayrd & sleep 1; }; exec swayr switch-workspace-or-window'
 bindsym $mod+e exec $fm
 bindsym $mod+b exec $browser
 bindsym $mod+c exec code
@@ -76,7 +83,9 @@ bindsym $mod+Shift+e exec wlogout  # was sway-power script; still in $scripts as
 bindsym --to-code $mod+l exec $scripts/sway-lock
 
 # --- binnewbs ports: wallpaper picker, waybar style/layout, hide bar ---
-bindsym $mod+w exec $scripts/sway-wallpaper
+bindsym $mod+w exec $scripts/sway-wallpaper --picker
+# Fast fallback: fuzzel fuzzy list (Super+Shift+W).
+bindsym $mod+Shift+w exec $scripts/sway-wallpaper
 bindsym $mod+Ctrl+b exec $scripts/waybar-style
 bindsym $mod+Alt+b exec $scripts/waybar-layout
 # NOTE: binnewbs uses $mod+h to hide waybar and $mod+l to lock, but those
@@ -150,6 +159,10 @@ bindsym $mod+button4 workspace prev
 # Pressing the current workspace number jumps back to the previous one.
 workspace_auto_back_and_forth yes
 
+# --- relative workspace nav: Super+[ / Super+] (no Fn needed on laptops) ---
+bindsym $mod+bracketleft workspace prev
+bindsym $mod+bracketright workspace next
+
 # --- scratchpad: stash a window, summon it on any workspace ---
 bindsym $mod+Shift+minus move scratchpad
 bindsym $mod+minus scratchpad show
@@ -203,6 +216,15 @@ for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize s
 # Fullscreen video players hold idle-inhibit automatically (no lock mid-movie).
 for_window [all] inhibit_idle fullscreen
 
+# --- floating window rules: new floating-worthy apps ---
+# yazi picker opens as a floating browser (Super+W).
+for_window [app_id="yazi-picker"] floating enable, move position center, resize set 1200 720
+for_window [app_id="swappy"] floating enable, move position center
+for_window [app_id="blueman-manager"] floating enable, resize set 600 450, move position center
+for_window [app_id="org.gnome.FileRoller"] floating enable, resize set 700 500, move position center
+for_window [app_id="imv"] floating enable, move position center
+for_window [app_id="mpv"] floating enable, move position center
+
 # --- session env for user services (fixes portals, notifications) ---
 exec systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP SWAYSOCK
 exec hash dbus-update-activation-environment 2>/dev/null && dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP SWAYSOCK
@@ -248,8 +270,12 @@ bindsym $mod+Shift+s exec grim -g "$(slurp)" - | swappy -f -
 # Ctrl+Print = region straight to clipboard (paste into chat/docs).
 bindsym Ctrl+Print exec grim -g "$(slurp)" - | wl-copy && notify-send 'Screenshot copied'
 
-# --- recording: Super+Shift+R toggles a region capture (wf-recorder) ---
+# --- recording: Super+Shift+R toggles a region capture (wf-recorder,
+# --- yuv420p for Discord/Slack/QuickTime/web); Super+Shift+N = mic clip,
+# --- Super+Shift+G = instant GIF of the region ---
 bindsym $mod+Shift+r exec $scripts/sway-record
+bindsym $mod+Shift+n exec $scripts/sway-record --audio
+bindsym $mod+Shift+g exec $scripts/sway-gif
 # --- color picker: Super+Ctrl+C copies the hex under the cursor ---
 bindsym $mod+Ctrl+c exec sh -c 'c=$(hyprpicker) || exit 0; printf %s "$c" | wl-copy; notify-send "Color $c copied"'
 
@@ -273,7 +299,7 @@ bindsym XF86MonBrightnessDown exec $scripts/sway-brightness --dec
 # --- workspace stay put. Idle-inhibit toggle for long runs. ---
 bindsym $mod+o exec ~/.local/bin/sway-inhibit-toggle
 # Keystroke overlay for tutorials/recordings (toggle). Bottom-corner display.
-bindsym $mod+i exec sh -c 'pgrep -x wshowkeys >/dev/null && pkill -x wshowkeys || exec $HOME/.nix-profile/bin/wshowkeys -a bottom'
+bindsym $mod+i exec sh -c 'pgrep -x wshowkeys >/dev/null && pkill -x wshowkeys || exec wshowkeys -a bottom'
 
 # Polkit agent for admin GUI prompts. Glob resolves the current
 # /nix/store hash at runtime (survives updates/GC); falls back to the

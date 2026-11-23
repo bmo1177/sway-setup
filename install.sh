@@ -106,7 +106,7 @@ fi
 
 echo "==> Dependency check (warnings only)"
 missing=""
-for cmd in sway swaymsg waybar foot fuzzel swaync kanshi grim slurp swappy wl-copy cliphist brightnessctl pamixer playerctl swayidle swaylock awww matugen gammastep; do
+for cmd in sway swaymsg waybar foot fuzzel swaync kanshi grim slurp swappy wl-copy cliphist brightnessctl pamixer playerctl swayidle swaylock awww matugen gammastep swayr wshowkeys sov; do
     command -v "$cmd" >/dev/null 2>&1 || missing="$missing $cmd"
 done
 if [ -n "$missing" ]; then
@@ -121,14 +121,11 @@ Done. Remaining manual steps:
   1. System packages: import nixos/sway.nix in /etc/nixos/configuration.nix
      (or paste nixos/sway-binnewbs-snippet.nix entries into
      programs.sway.extraPackages), then:  sudo nixos-rebuild switch
-  2. User tools (no sudo):  nix profile install \
-       'github:NixOS/nixpkgs/nixos-26.05#sov' \
-       'github:NixOS/nixpkgs/nixos-26.05#swayr' \
-       'github:NixOS/nixpkgs/nixos-26.05#wshowkeys'
-  3. Flatpak: remote-add flathub --user, then install each app's .flatpak
+     (swayr, wshowkeys, sov now ship declaratively in the module.)
+  2. Flatpak: remote-add flathub --user, then install each app's .flatpak
      bundle from its GitHub releases page.
-  4. Log out -> pick Sway at login -> log back in.
-  5. Super+W picks wallpaper + theme. Super+/ shows every shortcut.
+  3. Log out -> pick Sway at login -> log back in.
+  4. Super+W picks wallpaper + theme. Super+/ shows every shortcut.
 
 Restore: cp -a <backup-dir>/<name> ~/.config/<name>
 Your old configs are safe in the backup dir printed above.

@@ -26,9 +26,10 @@
     "sway/workspaces"
   ],
   "modules-right": [
+    "custom/recording",
     "group/notify",
     "battery",
-    "idle_inhibitor",
+    "custom/inhibit",
     "custom/separator#blank",
     "group/system",
     "network",
@@ -45,14 +46,21 @@
     "tooltip-format": "Layout: {long} — click to switch (us/ara)",
     "on-click": "swaymsg input type:keyboard xkb_switch_layout next"
   },
-  "idle_inhibitor": {
-    "format": "{icon}",
-    "format-icons": {
-      "activated": "",
-      "deactivated": ""
-    },
-    "tooltip-format-activated": "Idle inhibit ON — Super+O to turn off",
-    "tooltip-format-deactivated": "Idle inhibit OFF — Super+O for training runs"
+  "custom/inhibit": {
+    "exec": "$HOME/.config/sway/scripts/sway-inhibit-status",
+    "return-type": "json",
+    "interval": 2,
+    "signal": 9,
+    "tooltip": true,
+    "on-click": "$HOME/.config/sway/scripts/sway-inhibit-toggle"
+  },
+  "custom/recording": {
+    "exec": "$HOME/.config/sway/scripts/sway-record-status",
+    "return-type": "json",
+    "interval": 2,
+    "signal": 8,
+    "on-click": "$HOME/.config/sway/scripts/sway-record",
+    "on-click-right": "$HOME/.config/sway/scripts/sway-record --audio"
   },
   "clock": {
     "interval": 1,
@@ -137,10 +145,11 @@
     "critical-threshold": 82,
     "format": "{temperatureC}°C 󰈸",
     "format-critical": "{temperatureC}°C 󰈸",
-    "hwmon-path": [
-      "/sys/class/hwmon/hwmon1/temp1_input",
-      "/sys/class/thermal/thermal_zone0/temp"
-    ]
+    "hwmon-path-abs": [
+      "/sys/devices/platform/coretemp.0/hwmon",
+      "/sys/devices/platform/k10temp.0/hwmon"
+    ],
+    "input-filename": "temp1_input"
   },
   "backlight": {
     "interval": 5,
@@ -167,7 +176,7 @@
     "tooltip-format-ethernet": "{ifname} 󰌘",
     "tooltip-format-disconnected": "󰌙 Disconnected",
     "max-length": 30,
-    "on-click": "foot nmtui",
+    "on-click": "foot -a float-term nmtui",
     "on-click-right": "nmcli radio wifi toggle",
     "format-icons": [
       "󰤯",

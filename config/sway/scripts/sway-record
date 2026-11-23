@@ -1,13 +1,29 @@
 #!/usr/bin/env bash
-# sway-record — region screen-recording toggle (wf-recorder + slurp).
-# Bound to $mod+Shift+r in ~/.config/sway/config. Press again to stop
-# (SIGINT finalizes the mp4). Files land in ~/Videos/screencasts/.
+# sway-record — region screen recording toggle (wf-recorder + slurp).
+# Bound to $mod+Shift+R in ~/.config/sway/config; Super+Shift+N passes
+# --audio for mic capture. Files land in ~/Videos/screencasts/.
+# Press again to stop (SIGINT finalizes the mp4; -x yuv420p keeps the file
+# playable everywhere: Discord, Slack, QuickTime, browsers, web players).
 set -euo pipefail
 
-OUTDIR="$HOME/Videos/screencasts"
+if ! command -v wf-recorder >/dev/null 2>&1; then
+    notify-send -u critical 'Screencast failed' \
+        'wf-recorder missing — rebuild with nixos/sway.nix'
+    exit 1
+fi
 
-if pgrep -x wf-recorder >/dev/null 2>&1; then
-    pkill -INT -x wf-recorder
+OUTDIR="$HOME/Videos/screencasts"
+PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.pid"
+
+# Tell the top bar to refresh the custom/recording module (signal 8).
+notify_bar() {
+    pkill -RTMIN+8 -f 'waybar(-wrapped)?$' 2>/dev/null || true
+}
+
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    kill -INT "$(cat "$PIDFILE")" 2>/dev/null || true
+    rm -f "$PIDFILE"
+    notify_bar
     notify-send 'Recording stopped — finalizing mp4…'
     exit 0
 fi
@@ -15,5 +31,21 @@ fi
 mkdir -p "$OUTDIR"
 GEO="$(slurp)" || exit 0
 FILE="$OUTDIR/$(date +%Y-%m-%d-%H%M%S).mp4"
-notify-send 'Recording region…' "$FILE — Super+Shift+R to stop"
-exec wf-recorder -g "$GEO" -f "$FILE"
+
+# --audio: record the default mic source alongside the screen.
+AUDIO_ARGS=()
+if [ "${1:-}" = "--audio" ]; then
+    AUDIO_ARGS=(--audio)
+fi
+
+notify-send -u low -a Screencast \
+    "Recording region… ($(basename "$FILE"))${AUDIO_ARGS:+ with mic}"
+
+wf-recorder -g "$GEO" -x yuv420p "${AUDIO_ARGS[@]}" -f "$FILE" &
+REC_PID=$!
+echo "$REC_PID" > "$PIDFILE"
+notify_bar
+
+wait "$REC_PID" 2>/dev/null || true
+rm -f "$PIDFILE"
+notify_bar

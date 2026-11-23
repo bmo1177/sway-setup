@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# sway-gif — animated GIF of a screen region (tech docs, PR demos, issues).
+# Bound to $mod+Shift+G. Uses slurp + wf-recorder + ffmpeg palette, saves to
+# ~/Pictures/Screenshots/gif-*.gif and copies it to the clipboard.
+#   sway-gif [--duration=N]     (default N=6 seconds)
+set -euo pipefail
+
+if ! command -v wf-recorder >/dev/null 2>&1; then
+    notify-send -u critical 'GIF failed' \
+        'wf-recorder missing — rebuild with nixos/sway.nix'
+    exit 1
+fi
+
+DURATION="${GIF_DURATION:-6}"
+for a in "$@"; do
+    case "$a" in
+        --duration=*) DURATION="${a#--duration=}" ;;
+    esac
+done
+[[ "$DURATION" =~ ^[0-9]+$ ]] || DURATION=6
+
+OUTDIR="$HOME/Pictures/Screenshots"
+mkdir -p "$OUTDIR"
+GEO="$(slurp)" || exit 0
+[ -z "${GEO:-}" ] && exit 0
+
+TMP="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/sway-gif-XXXXXX.mp4")"
+trap 'rm -f "$TMP"' EXIT
+
+notify-send -u low -a Screencast "Recording region → GIF (~${DURATION}s)…"
+
+wf-recorder -g "$GEO" -x yuv420p -f "$TMP" 2>/dev/null &
+REC_PID=$!
+sleep "$DURATION"
+kill -INT "$REC_PID" 2>/dev/null || true
+wait "$REC_PID" 2>/dev/null || true
+
+# Compact palette GIF: quiet dithering, loop forever, 800px wide.
+GIF="$OUTDIR/gif-$(date +%Y-%m-%d-%H%M%S).gif"
+ffmpeg -y -hide_banner -loglevel error -i "$TMP" \
+    -vf "fps=15,scale=800:-1:flags=lanczos,split=s0[s1],s2[s3];[s1]palettegen=max_colors=256[p];[s3][p]paletteuse=dither=bayer" \
+    -loop 0 "$GIF" || { notify-send -u critical 'GIF failed' 'check ffmpeg / wf-recorder output'; exit 1; }
+
+if command -v wl-copy >/dev/null 2>&1; then
+    wl-copy < "$GIF" 2>/dev/null || true
+fi
+notify-send -u normal -a Screencast 'GIF saved + copied' "$(basename "$GIF")"

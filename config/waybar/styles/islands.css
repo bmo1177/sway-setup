@@ -98,7 +98,7 @@ tooltip label {
 #bluetooth,
 #clock,
 #cpu,
-#idle_inhibitor,
+#custom-inhibit,
 #language,
 #memory,
 #network,
@@ -158,6 +158,18 @@ tooltip label {
 	color: @primary;
 }
 
-#idle_inhibitor.activated {
+#custom-inhibit.activated {
 	color: @tertiary;
+}
+
+/* --- custom/recording (sway-record toggle) --- */
+#custom-recording.recording {
+	color: @on_primary;
+	background: @error;
+	border-radius: 12px;
+	padding: 0 8px;
+}
+#custom-recording.idle {
+	color: @outline;
+	padding: 0 8px;
 }
